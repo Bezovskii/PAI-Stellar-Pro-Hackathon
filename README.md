@@ -4,7 +4,7 @@
 
 PAI turns natural-language agreements into structured, reviewable, programmable workflows.
 
-For **Stellar Pro Hackathon — Scale**, we are extending the existing PAI product with a **Stellar settlement execution layer**:
+For **Stellar Pro Hackathon — Scale**, I am extending the existing PAI product with a **Stellar settlement execution layer**:
 
 ```text
 Agreement understanding + consent
