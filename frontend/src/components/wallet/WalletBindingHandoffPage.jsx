@@ -1,4 +1,4 @@
-import {
+﻿import {
     useMemo,
     useState,
 } from "react";
@@ -475,6 +475,23 @@ export default function WalletBindingHandoffPage() {
                                 ? "Both agreement parties are wallet-bound. Continue with the backend-authorized funding flow."
                                 : "This wallet is bound. The other agreement party must bind their wallet before funding becomes available."}
                         </p>
+
+                        {result.lifecycle
+                            ?.walletBindingComplete && (
+                            <button
+                                type="button"
+                                className="walletAuthButton"
+                                onClick={() =>
+                                    window.location.assign(
+                                        `/stellar-funding?agreementId=${encodeURIComponent(
+                                            handoff.agreementId
+                                        )}`
+                                    )
+                                }
+                            >
+                                Continue to funding
+                            </button>
+                        )}
                     </section>
                 )}
         </div>

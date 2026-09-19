@@ -1,4 +1,4 @@
-import {
+﻿import {
   useEffect,
   useState,
 } from "react";
@@ -23,6 +23,7 @@ import SellerOrderPanel from "./components/orders/SellerOrderPanel.jsx";
 import BuyerPaymentPanel from "./components/payments/BuyerPaymentPanel.jsx";
 import WalletControl from "./components/wallet/WalletControl.jsx";
 import WalletBindingHandoffPage from "./components/wallet/WalletBindingHandoffPage.jsx";
+import StellarFundingPanel from "./components/settlement/StellarFundingPanel.jsx";
 
 import { useWeb3 } from "./hooks/useWeb3.js";
 
@@ -1328,6 +1329,13 @@ function App() {
               path="/wallet-binding"
               element={
                 <WalletBindingHandoffPage />
+              }
+            />
+
+            <Route
+              path="/stellar-funding"
+              element={
+                <StellarFundingPanel />
               }
             />
             <Route
