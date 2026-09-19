@@ -177,7 +177,7 @@ PAI's intelligence remains chain-independent.
 
 Stellar is the financial execution adapter.
 
-> **We are not moving PAI's intelligence onto Stellar. We are connecting PAI's agreement state to Stellar execution.**
+> **I am not moving PAI's intelligence onto Stellar. I am connecting PAI's agreement state to Stellar execution.**
 
 ---
 
