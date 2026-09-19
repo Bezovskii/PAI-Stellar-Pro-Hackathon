@@ -16,6 +16,7 @@ import {
 import type {
   FetchLike,
   HorizonPaymentEvidence,
+  HorizonOutboundPaymentEvidence,
   TryAnchorConfig,
 } from "./types.js";
 
@@ -327,5 +328,230 @@ export async function verifyHorizonPayment(
     trustlineBalance: balanceText,
     sellingLiabilities: liabilitiesText,
     spendableBalance: formatDecimalUnits(spendable, STELLAR_DECIMALS),
+  };
+}
+
+function findOutboundPayment(
+  records: readonly JsonObject[],
+  transactionHash: string,
+  sourceAccount: string,
+  destinationAccount: string,
+  assetCode: string,
+  assetIssuer: string,
+  expectedAmount: bigint,
+): JsonObject | undefined {
+  return records.find((record) => {
+    if (
+      record["type"] !== "payment" ||
+      record["transaction_successful"] !== true ||
+      record["transaction_hash"] !== transactionHash ||
+      record["from"] !== sourceAccount ||
+      record["to"] !== destinationAccount ||
+      record["asset_code"] !== assetCode ||
+      record["asset_issuer"] !== assetIssuer ||
+      typeof record["amount"] !== "string"
+    ) {
+      return false;
+    }
+
+    try {
+      return parseDecimalUnits(
+        record["amount"],
+        STELLAR_DECIMALS,
+        "Horizon outbound payment amount",
+        "HORIZON_TRANSACTION_INVALID",
+      ) === expectedAmount;
+    } catch {
+      return false;
+    }
+  });
+}
+
+export interface VerifyHorizonOutboundPaymentInput {
+  readonly config: TryAnchorConfig;
+  readonly transactionHash: string;
+  readonly sourceAccount: string;
+  readonly destinationAccount: string;
+  readonly expectedAmount: string;
+  readonly memo: string;
+  readonly fetchImpl?: FetchLike;
+}
+
+export async function verifyHorizonOutboundPayment(
+  input: VerifyHorizonOutboundPaymentInput,
+): Promise<HorizonOutboundPaymentEvidence> {
+  if (!/^[0-9a-f]{64}$/i.test(input.transactionHash)) {
+    throw new TryAnchorError(
+      "HORIZON_TRANSACTION_INVALID",
+      "Stellar transaction hash must be 64 hexadecimal characters.",
+    );
+  }
+
+  if (!/^(0|[1-9]\d*)$/.test(input.memo)) {
+    throw new TryAnchorError(
+      "HORIZON_TRANSACTION_INVALID",
+      "Stellar off-ramp memo must be a decimal MEMO_ID value.",
+    );
+  }
+
+  const memoId =
+    BigInt(
+      input.memo,
+    );
+
+  if (
+    memoId >
+      18446744073709551615n
+  ) {
+    throw new TryAnchorError(
+      "HORIZON_TRANSACTION_INVALID",
+      "Stellar off-ramp MEMO_ID exceeds uint64.",
+    );
+  }
+
+  const fetchImpl =
+    resolveFetch(
+      input.fetchImpl,
+    );
+
+  const encodedHash =
+    encodeURIComponent(
+      input.transactionHash,
+    );
+
+  const expectedAmount =
+    parseDecimalUnits(
+      input.expectedAmount,
+      STELLAR_DECIMALS,
+      "expected outbound settlement amount",
+      "HORIZON_TRANSACTION_INVALID",
+    );
+
+  const transaction =
+    await requireHorizonObject(
+      await fetchImpl(
+        horizonUrl(
+          input.config.horizonUrl,
+          `transactions/${encodedHash}`,
+        ),
+      ),
+      "Horizon outbound transaction request",
+    );
+
+  if (
+    requireHorizonString(
+      transaction,
+      "hash",
+    ).toLowerCase() !==
+      input.transactionHash.toLowerCase() ||
+    !requireBoolean(
+      transaction,
+      "successful",
+    )
+  ) {
+    throw new TryAnchorError(
+      "HORIZON_TRANSACTION_INVALID",
+      "Horizon did not return the expected successful outbound transaction.",
+    );
+  }
+
+  if (
+    requireHorizonString(
+      transaction,
+      "source_account",
+    ) !==
+      input.sourceAccount
+  ) {
+    throw new TryAnchorError(
+      "HORIZON_TRANSACTION_INVALID",
+      "Outbound Stellar transaction source does not match the released-USDC recipient.",
+    );
+  }
+
+  if (
+    requireHorizonString(
+      transaction,
+      "memo_type",
+    ) !==
+      "id" ||
+    requireHorizonString(
+      transaction,
+      "memo",
+    ) !==
+      input.memo
+  ) {
+    throw new TryAnchorError(
+      "HORIZON_TRANSACTION_INVALID",
+      "Outbound Stellar transaction does not contain the exact required MEMO_ID.",
+    );
+  }
+
+  const ledger =
+    requireLedger(
+      transaction,
+    );
+
+  const createdAt =
+    requireHorizonString(
+      transaction,
+      "created_at",
+    );
+
+  const operations =
+    await requireHorizonObject(
+      await fetchImpl(
+        horizonUrl(
+          input.config.horizonUrl,
+          `transactions/${encodedHash}/operations?limit=200`,
+        ),
+      ),
+      "Horizon outbound transaction operations request",
+    );
+
+  const payment =
+    findOutboundPayment(
+      embeddedRecords(
+        operations,
+        "Horizon outbound operations request",
+      ),
+      input.transactionHash,
+      input.sourceAccount,
+      input.destinationAccount,
+      input.config.settlementAsset.code,
+      input.config.settlementAsset.issuer,
+      expectedAmount,
+    );
+
+  if (payment === undefined) {
+    throw new TryAnchorError(
+      "HORIZON_TRANSACTION_INVALID",
+      "Transaction does not contain the exact expected outbound USDC payment.",
+    );
+  }
+
+  return {
+    transactionHash:
+      input.transactionHash.toLowerCase(),
+
+    ledger,
+    createdAt,
+
+    sourceAccount:
+      input.sourceAccount,
+
+    destinationAccount:
+      input.destinationAccount,
+
+    paymentAmount:
+      requireHorizonString(
+        payment,
+        "amount",
+      ),
+
+    memoType:
+      "id",
+
+    memo:
+      input.memo,
   };
 }

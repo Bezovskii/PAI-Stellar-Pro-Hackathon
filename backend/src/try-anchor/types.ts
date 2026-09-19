@@ -82,6 +82,15 @@ export interface DepositExchangeInstructions {
   readonly extraInfo?: Readonly<Record<string, unknown>>;
 }
 
+export interface WithdrawalExchangeInstructions {
+  readonly anchorTransactionId: string;
+  readonly quoteId: string;
+  readonly destinationAccount: string;
+  readonly memoType: "id";
+  readonly memo: string;
+  readonly etaSeconds?: number;
+  readonly extraInfo?: Readonly<Record<string, unknown>>;
+}
 export interface Sep6Transaction {
   readonly id: string;
   readonly status: string;
@@ -91,6 +100,8 @@ export interface Sep6Transaction {
   readonly amountOut?: string;
   readonly amountOutAsset?: string;
   readonly stellarTransactionId?: string;
+  readonly externalTransactionId?: string;
+  readonly to?: string;
   readonly claimableBalanceId?: string;
   readonly startedAt?: string;
   readonly updatedAt?: string;
@@ -112,6 +123,71 @@ export interface HorizonPaymentEvidence {
  * Safe to expose outside the anchor integration. Authentication tokens,
  * KYC fields, and bank instructions are deliberately excluded.
  */
+export interface HorizonOutboundPaymentEvidence {
+  readonly transactionHash: string;
+  readonly ledger: number;
+  readonly createdAt: string;
+  readonly sourceAccount: string;
+  readonly destinationAccount: string;
+  readonly paymentAmount: string;
+  readonly memoType: "id";
+  readonly memo: string;
+}
+export interface StellarPaymentAuthorizationRequest {
+  readonly sourceAccount: string;
+  readonly destinationAccount: string;
+  readonly asset: {
+    readonly code: "USDC";
+    readonly issuer: string;
+  };
+  readonly amount: string;
+  readonly memoType: "id";
+  readonly memo: string;
+  readonly networkPassphrase: string;
+}
+
+export interface StellarPaymentAuthorizer {
+  readonly accountId: string;
+
+  submitPayment(
+    request: StellarPaymentAuthorizationRequest,
+  ): Promise<{
+    readonly transactionHash: string;
+  }>;
+}
+
+export interface VerifiedTryOfframpProof {
+  readonly version: "pai.try-offramp-proof.v1";
+  readonly status: "verified";
+  readonly provider: "tr-mock-anchor";
+  readonly environment: "stellar-testnet";
+  readonly rail: "sep6-withdraw-exchange";
+
+  readonly source: {
+    readonly network: "stellar-testnet";
+    readonly asset: {
+      readonly code: "USDC";
+      readonly issuer: string;
+    };
+    readonly amount: string;
+    readonly account: string;
+  };
+
+  readonly destination: {
+    readonly asset: "iso4217:TRY";
+    readonly amount: string;
+    readonly payoutReference: string;
+  };
+
+  readonly references: {
+    readonly quoteId: string;
+    readonly anchorTransactionId: string;
+    readonly stellarTransactionHash: string;
+    readonly ledger: number;
+  };
+
+  readonly verifiedAt: string;
+}
 export interface VerifiedAssetAcquisitionProof {
   readonly version: "pai.asset-acquisition-proof.v1";
   readonly status: "verified";
