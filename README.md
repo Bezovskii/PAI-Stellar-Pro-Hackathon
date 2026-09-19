@@ -1,409 +1,585 @@
 # PAI — Programmable Agreement Infrastructure
 
-**AI-native programmable agreements for real-world digital work.**
+**AI interprets. Deterministic systems verify. Humans consent. Protocols execute.**
 
-PAI turns natural-language deals into structured, programmable workflows that can be accepted, funded, delivered, disputed, and settled on-chain.
+PAI turns natural-language agreements into structured, reviewable, programmable workflows.
 
-> **AI advises. Human decides. Protocol executes.**
+For **Stellar Pro Hackathon — Scale**, we are extending the existing PAI product with a **Stellar settlement execution layer**:
 
-PAI is designed so the agreement model and intelligence layer remain **chain-independent**, while execution and settlement happen through modular adapters.
+```text
+Agreement understanding + consent
+                ↓
+          READY_TO_FUND
+                ↓
+      Stellar execution path
+                ↓
+ TRY → USDC → Soroban escrow → release
+```
+
+> **A ramp can show how TRY becomes USDC. PAI shows what that USDC can execute under an agreed, verifiable contract.**
 
 ---
 
-## Core lifecycle
+## The problem
+
+Smart contracts can execute an agreement perfectly and still execute a terrible agreement.
+
+Alice hires Bob for a piece of work. But the deadline is vague, acceptance is undefined, and payment conditions are ambiguous.
+
+Putting that agreement on-chain does not make it a good agreement.
+
+**It makes the ambiguity executable.**
+
+PAI is designed to solve the agreement problem **before money moves**.
+
+---
+
+## What PAI does
 
 ```text
-DEFINE → ACCEPT → FUND → DELIVER → SETTLE
+Natural Language
+      ↓
+Agreement Intelligence
+      ↓
+Agreement Object
+      ↓
+Deterministic Stress Test
+      ↓
+Canonical Agreement Version
+      ↓
+Exact Human Acceptance
+      ↓
+agreementHash
+      ↓
+READY_TO_FUND
+```
+
+The architecture separates two questions:
+
+> **Agreement Intelligence determines WHEN money is legitimately allowed to move.**  
+> **The Settlement Router determines HOW that money should move.**
+
+---
+
+# Stellar Pro Hackathon — Scale
+
+PAI is **not being created from scratch during this hackathon**.
+
+PAI entered Stellar Pro as an existing agreement infrastructure product. The goal of this hackathon is to extend that existing product with a Stellar financial execution layer.
+
+## Existing before Stellar Pro
+
+| Capability | Status entering Stellar Pro |
+| --- | --- |
+| Natural-language Agreement Intelligence | Existing |
+| Local Qwen + QLoRA work | Existing |
+| Agreement Object | Existing |
+| Deterministic Agreement Stress Test | Existing |
+| Canonical agreement versions / hashes | Existing |
+| Exact dual-party acceptance | Existing |
+| Wallet binding | Existing |
+| `READY_TO_FUND` lifecycle | Existing |
+| Backend | Existing |
+| Frontend | Existing |
+| Telegram agreement flow | Existing |
+| Arc settlement work | Existing |
+| The Graph execution history | Existing |
+| Uniswap routing experiment | Existing |
+
+Dedicated Stellar Pro branch:
+
+```text
+stellar-pro-2026
+```
+
+Baseline commit used to create this isolated hackathon repository:
+
+```text
+a96d0ad49b635577f43394bf1c764d46544f5d12
+```
+
+---
+
+# What we are building during Stellar Pro
+
+The Stellar-specific components below are **hackathon targets**.
+
+They are intentionally **not presented as completed** until source code, tests, deployment evidence and transaction proof exist.
+
+| Component | Purpose | Status |
+| --- | --- | --- |
+| **StellarSettlementIntent** | Converts PAI agreement state into a deterministic settlement instruction | Building |
+| **TryAnchorAdapter** | Isolates TRY / anchor-specific funding logic from PAI Core | Building |
+| **Stellar Settlement Router** | Chooses and coordinates the Stellar execution path | Building |
+| **Soroban AgreementEscrow** | Binds programmable custody and release to the canonical PAI agreement | Building |
+| **TRY → USDC → escrow → release orchestration** | Proves the components operate as one settlement path | Building |
+
+---
+
+# Architecture
+
+## PAI: Agreement Intelligence → Stellar Execution
+
+```mermaid
+flowchart TD
+
+    A["Natural Language Agreement"] --> B["PAI Agreement Intelligence"]
+    B --> C["Agreement Object"]
+    C --> D["Deterministic Stress Test"]
+    D --> E["Canonical Agreement Version"]
+
+    E --> F["Alice Accepts Exact Hash"]
+    E --> G["Bob Accepts Exact Hash"]
+
+    F --> H["READY_TO_FUND"]
+    G --> H
+
+    H --> I["StellarSettlementIntent"]
+
+    subgraph PAI_CORE["PAI — Chain-Independent Core"]
+        B
+        C
+        D
+        E
+        F
+        G
+        H
+        I
+    end
+
+    I --> J["Stellar Settlement Router"]
+    J --> K["TryAnchorAdapter"]
+    K --> L["Mock / Test Anchor<br/>TRY → USDC"]
+    L --> M["Verify Stellar Receipt"]
+    M --> N["Soroban AgreementEscrow"]
+
+    E -. "agreementHash" .-> N
+
+    N --> O["FUNDED"]
+    O --> P["Bob Delivers"]
+    P --> Q["Alice Accepts"]
+    Q --> R["Soroban Release"]
+    R --> S["Recipient receives USDC"]
+    R --> T["PAI: COMPLETED"]
+
+    subgraph STELLAR["Stellar Execution Adapter"]
+        J
+        K
+        L
+        M
+        N
+        O
+        R
+    end
+```
+
+PAI's intelligence remains chain-independent.
+
+Stellar is the financial execution adapter.
+
+> **We are not moving PAI's intelligence onto Stellar. We are connecting PAI's agreement state to Stellar execution.**
+
+---
+
+# Target end-to-end flow
+
+```text
+Natural-language agreement
+→ Agreement Object
+→ deterministic Stress Test
+→ canonical agreement version
+→ Alice accepts exact hash
+→ Bob accepts exact hash
+→ READY_TO_FUND
+→ StellarSettlementIntent
+→ Stellar Settlement Router
+→ TryAnchorAdapter
+→ TRY funding
+→ USDC on Stellar
+→ Soroban AgreementEscrow
+→ delivery
+→ acceptance
+→ release
+→ COMPLETED
+```
+
+---
+
+# The critical binding
+
+The target proof is:
+
+```text
+PAI agreementHash
+=
+Soroban AgreementEscrow agreementHash
+```
+
+This is the core of the Stellar integration.
+
+The money should not sit in a generic escrow disconnected from the agreement that created it.
+
+The Soroban escrow should be cryptographically bound to the exact canonical agreement version accepted by both parties.
+
+When implemented and deployed, this section will contain:
+
+- PAI agreement hash
+- Soroban contract ID
+- deployment transaction
+- funding transaction
+- release transaction
+- final lifecycle state
+
+---
+
+# Why Stellar fits PAI
+
+## PAI Core determines
+
+- what the parties agreed to
+- whether the agreement is sufficiently objective
+- which canonical version they accepted
+- whether both parties accepted the same exact version
+- whether the agreement reached `READY_TO_FUND`
+- when release conditions are satisfied
+
+## Stellar execution layer provides
+
+- fiat-entry integration through an anchor/provider abstraction
+- Stellar asset verification
+- settlement routing
+- Soroban agreement-bound escrow
+- programmable release
+
+> **PAI already knows what the parties agreed to and when that agreement becomes fundable. The Stellar integration gives that agreement a programmable settlement path.**
+
+---
+
+# The product distinction
+
+An anchor solves:
+
+```text
+Fiat
+→ digital asset
+```
+
+PAI extends that into:
+
+```text
+Fiat
+→ digital asset
+→ canonical agreement
+→ programmable escrow
+→ verified release condition
+→ settlement
+```
+
+> **An anchor normally turns lira into a digital asset. PAI turns that digital asset into an enforceable agreement.**
+
+---
+
+# Demo target
+
+Once the Stellar components are proven, the demo should show one uninterrupted lifecycle:
+
+```text
+READY_TO_FUND
+→ TRY funding
+→ USDC obtained
+→ Stellar receipt verified
+→ Soroban escrow funded
+→ delivery
+→ acceptance
+→ release
+→ COMPLETED
+```
+
+The key visual proof should be:
+
+```text
+PAI Agreement
+agreementHash:
+0x...
+
+Soroban AgreementEscrow
+agreementHash:
+0x...
+```
+
+with both values identical.
+
+Then:
+
+```text
+PAI lifecycle: COMPLETED
+Soroban escrow: RELEASED
+```
+
+---
+
+# Evidence ledger
+
+This section will be updated as implementation proof lands.
+
+## StellarSettlementIntent
+
+**Status:** Not yet claimed complete
+
+Proof to add:
+
+- source path
+- schema/interface
+- example serialized intent
+- passing validation tests
+- agreement ID/version/hash
+
+## TryAnchorAdapter
+
+**Status:** Not yet claimed complete
+
+Proof to add:
+
+- provider or mock-anchor identity
+- TRY input
+- USDC output
+- quote/reference ID
+- expiry
+- response proof
+- explicit mock/testnet labeling
+
+## Stellar Settlement Router
+
+**Status:** Not yet claimed complete
+
+Proof to add:
+
+- input intent
+- selected adapter
+- route result
+- invalid/blocked execution behavior
+
+## Soroban AgreementEscrow
+
+**Status:** Not yet claimed complete
+
+Proof to add:
+
+- Soroban contract ID
+- Stellar network
+- deployment transaction
+- deployment ledger
+- contract source
+- test output
+- initial state
+
+## Funding
+
+**Status:** Not yet claimed complete
+
+Proof to add:
+
+- payer Stellar address
+- asset
+- amount
+- transaction hash
+- ledger/explorer evidence
+- resulting escrow state
+
+## Agreement binding
+
+**Status:** Not yet claimed complete
+
+Required proof:
+
+```text
+PAI agreementHash == Soroban agreementHash
+```
+
+## Delivery and release
+
+**Status:** Not yet claimed complete
+
+Proof to add:
+
+- delivery/evidence reference
+- acceptance event
+- release transaction
+- final Soroban state
+- recipient result
+- PAI `COMPLETED`
+
+---
+
+# Repository structure
+
+Major existing areas:
+
+```text
+ai/           Agreement Intelligence / model work
+apps/         Application surfaces including Telegram
+backend/      PAI backend and lifecycle services
+contracts/    Existing smart-contract foundation
+frontend/     Web interface
+mobile/       Mobile work
+packages/     Shared packages / contracts
+subgraph/     Existing execution-history indexing work
+test/         Existing tests
+test-foundry/ Existing Foundry tests
+```
+
+Stellar-specific source locations will be documented here as they are added.
+
+---
+
+# Existing PAI lifecycle
+
+```text
+DEFINE
+→ ACCEPT
+→ FUND
+→ DELIVER
+→ SETTLE
 ```
 
 Exception path:
 
 ```text
-DISPUTE → EVIDENCE → ARBITRATION → RESOLUTION
+DISPUTE
+→ EVIDENCE
+→ ARBITRATION
+→ RESOLUTION
 ```
 
-PAI is built around explicit state transitions, wallet-signed financial actions, milestone-based execution, and deterministic settlement.
+The Stellar work extends the **execution** side of that lifecycle. It does not replace the agreement model.
 
 ---
 
-## Why PAI exists
+# Agreement Intelligence
 
-Digital work still depends on fragmented trust:
+AI may help with:
 
-- agreements live in documents, DMs, or chat threads
-- payment is handled somewhere else
-- milestones are often ambiguous
-- delivery evidence is disconnected from payment
-- disputes depend on manual interpretation
-- blockchain users face unnecessary wallet, token, and network friction
+- agreement structuring
+- ambiguity detection
+- missing terms
+- risk identification
+- clarification suggestions
 
-PAI connects the agreement lifecycle to programmable execution.
+AI does **not** receive unilateral authority to:
 
-The goal is not to make users think about smart contracts.
+- custody funds
+- sign user transactions
+- alter an accepted canonical agreement
+- release escrow
+- make final arbitration decisions
 
-The goal is to let users define a real agreement in plain language and have PAI turn it into a structured, reviewable, fundable workflow.
-
----
-
-## Architecture
-
-```text
-Natural Language
-      ↓
-PAI Intelligence
-      ↓
-Agreement Object
-      ↓
-Agreement Fuzzer / Stress Test
-      ↓
-Human Review + Acceptance
-      ↓
-PAI Core
-      ↓
-Execution Router
-      ↓
-Chain / Settlement Adapter
-```
-
-The critical architectural boundary is:
-
-**PAI Core is not tied to a single blockchain.**
-
-Ethereum, Arc, Hedera, Stellar, Solana, or future networks should be integrated through adapters rather than by rewriting the agreement model or intelligence layer.
+> **AI interprets. Deterministic systems verify.**
 
 ---
 
-## Agreement Object
+# Deterministic Stress Test
 
-PAI represents each agreement as structured data rather than only legal prose.
-
-A simplified Agreement Object can contain:
-
-```text
-Agreement
-├── id
-├── parties[]
-├── roles[]
-├── totalValue
-├── settlementAsset
-├── milestones[]
-│   ├── amount
-│   ├── deadline
-│   ├── deliverable
-│   ├── acceptanceCriteria
-│   ├── releaseConditions
-│   └── disputeWindow
-├── fundingConditions
-├── disputeRules
-├── arbitrationRules
-├── evidenceReferences
-└── metadata
-```
-
-The Agreement Object is intended to remain independent from the user interface and settlement chain.
-
----
-
-## Agreement Fuzzer
-
-PAI does not only ask whether an agreement is syntactically valid.
+PAI asks more than whether an agreement is syntactically valid.
 
 It asks:
 
 > **How could either party abuse this agreement?**
 
-The stress-test layer is designed to detect problems such as:
+The stress-test layer is designed to identify problems such as:
 
 - undefined acceptance criteria
 - contradictory deadlines
 - indefinite approval periods
-- missing dispute-resolution paths
+- missing dispute paths
 - ambiguous partial delivery
-- inconsistent payment and release conditions
-- exploitable milestone states
-- impossible state transitions
+- inconsistent payment conditions
+- impossible or exploitable state transitions
 
-The AI can identify issues and recommend changes.
-
-It does **not** get unilateral authority to move funds or make final arbitration decisions.
+This happens before execution.
 
 ---
 
-## Current product foundation
+# Security model
 
-The repository already contains the existing PAI / ESCT technical foundation, including:
+PAI separates authority across layers.
 
-- Solidity smart contracts
-- agreement creation
-- milestone-based work
-- explicit counterparty acceptance
-- escrow funding
-- delivery submission
-- evidence references and proof commitments
-- milestone approval and release
-- disputes
-- arbitration
-- refunds and resolution
-- deterministic agreement completion
-- Fastify + TypeScript backend
-- Prisma + PostgreSQL
-- SIWE authentication
-- React / Vite frontend
-- Ethers.js integration
-- Hardhat + Foundry testing
-- security and architecture documentation
+## Agreement / protocol layer
 
-The backend provides application services while blockchain contracts remain the financial source of truth.
+Responsible for:
 
-Private keys are never held by the backend.
+- canonical agreement identity
+- exact accepted version/hash
+- participant identities/wallet bindings
+- lifecycle state
+- release conditions
+- dispute state
 
----
+## Backend
 
-## Existing agreement lifecycle
+Responsible for:
 
-```text
-Create Agreement
-      ↓
-Define Milestones
-      ↓
-Counterparty Accepts
-      ↓
-Client Funds Escrow
-      ↓
-Contractor Delivers + Evidence
-      ↓
-Client Approves / Disputes
-      ↓
-Release / Arbitration / Refund
-      ↓
-Agreement Completed
-```
+- authenticated application sessions
+- metadata
+- evidence references
+- application history
+- orchestration
+- intelligence access
+
+## AI
+
+Responsible for interpretation and recommendations only.
+
+## Stellar execution adapter
+
+Target responsibility:
+
+- settlement-intent execution
+- anchor/provider abstraction
+- Stellar transaction verification
+- Soroban escrow interaction
+- release execution
+
+Private keys should remain user-controlled.
 
 ---
 
-# ETHOnline 2026 — Continuity Track
+# Technology foundation
 
-PAI is participating in **ETHOnline 2026** as an existing project under the **Continuity / Ship a Feature** model.
-
-This repository intentionally separates pre-existing PAI work from new ETHOnline work.
-
-## Pre-existing before the official ETHOnline build window
-
-The following existed before the official ETHOnline build start:
-
-- PAI Core agreement lifecycle
-- escrow and milestone logic
-- dispute and arbitration flows
-- settlement infrastructure
-- backend and frontend foundations
-- wallet authentication
-- existing smart contracts and tests
-- chain-independent PAI architecture work
-- initial Telegram bot skeleton and agreement entry flow
-- pre-existing AI / intelligence specifications and research
-
-These are **not** claimed as ETHOnline-built features.
-
-## Planned ETHOnline Continuity feature
-
-The main Continuity feature is the:
-
-# PAI Telegram Agreement Agent
-
-Target workflow:
-
-```text
-Telegram
-    ↓
-Natural-language agreement
-    ↓
-PAI Intelligence API
-    ↓
-Structured Agreement Object
-    ↓
-Agreement Fuzzer
-    ↓
-Clarification loop
-    ↓
-Human review
-    ↓
-Counterparty acceptance
-    ↓
-Funding
-    ↓
-Delivery
-    ↓
-Approval / Dispute
-    ↓
-Settlement
-```
-
-New ETHOnline functionality will be developed **after the official event start** and tracked through normal Git history.
-
-Planned work includes:
-
-- Telegram ↔ PAI Intelligence integration
-- structured Agreement Object rendering in Telegram
-- conversational clarification / Fuzzer workflow
-- counterparty invitation and acceptance
-- wallet and funding flow
-- The Graph integration for live on-chain context used by the intelligence layer
-- Uniswap integration for settlement-asset conversion where required
-- Arc adapter for programmable USDC settlement
-
-**The items above are planned Continuity work and should not be interpreted as completed until corresponding post-start commits exist.**
-
----
-
-## Target ETHOnline integration architecture
-
-```text
-                    Telegram
-                       ↓
-                PAI Intelligence
-                       ↑
-                  The Graph
-             live on-chain context
-                       ↓
-                Agreement Object
-                       ↓
-                Agreement Fuzzer
-                       ↓
-                  Human Review
-                       ↓
-                    PAI Core
-                       ↓
-             Funding / Execution
-                  ↙         ↘
-             Uniswap      direct asset
-                  ↘         ↙
-              Execution Router
-                       ↓
-                  Arc Adapter
-                       ↓
-              USDC Settlement
-```
-
-The integrations serve different responsibilities:
-
-- **The Graph** → indexed on-chain context for AI reasoning
-- **Uniswap** → asset conversion and funding liquidity
-- **Arc** → programmable USDC settlement
-
-The goal is one coherent product flow, not a collection of sponsor integrations.
-
----
-
-## Telegram interface principle
-
-Telegram is an interface — not the protocol.
-
-```text
-Telegram Bot / Mini App
-        ↓
-Telegram Service
-        ↓
-PAI Backend API
-        ↓
-Intelligence / Agreement Object / Fuzzer
-        ↓
-PAI Core
-        ↓
-Execution Router
-        ↓
-Settlement Infrastructure
-```
-
-Business logic, settlement authority, and financial truth do not belong inside Telegram handlers.
-
-Users must explicitly authorize wallet transactions.
-
-PAI never asks users for seed phrases or private keys.
-
----
-
-## Technology
-
-### Smart contracts
-
-- Solidity
-- Hardhat
-- Foundry
-- Ethers.js
-
-### Backend
+### Existing PAI
 
 - Node.js
 - TypeScript
 - Fastify
 - Prisma
 - PostgreSQL
-- SIWE
-- TypeBox
-- ethers.js
-
-### Frontend
-
 - React
 - Vite
+- Telegram
+- SIWE
+- Solidity
+- Hardhat
+- Foundry
 - Ethers.js
-- MetaMask
+- Arc settlement work
+- The Graph
+- Uniswap routing experiments
 
-### Telegram feature
+### Stellar Pro target additions
 
-- Node.js
-- TypeScript
-- Telegram Bot API
-- Telegram Mini App for wallet-dependent actions
+- Stellar tooling
+- Soroban
+- Stellar Testnet
+- Stellar Settlement Intent
+- Stellar Settlement Router
+- TRY anchor/provider abstraction
 
----
-
-## Security model
-
-PAI is designed around explicit trust boundaries.
-
-### Protocol / blockchain
-
-Responsible for:
-
-- agreement identity
-- participant wallet addresses
-- payment asset
-- escrow custody
-- milestone state
-- release / refund rules
-- dispute state
-- settlement
-
-### Backend
-
-Responsible for:
-
-- wallet-authenticated sessions
-- metadata
-- evidence references
-- notifications
-- indexes
-- application history
-- intelligence orchestration
-
-### AI
-
-Responsible for:
-
-- agreement structuring
-- ambiguity detection
-- risk analysis
-- stress testing
-- recommendations
-
-AI does **not** independently custody funds, sign transactions, or make final arbitration decisions.
+The exact target stack will be updated as implementation evidence lands.
 
 ---
 
-## Local development
+# Local development
 
-Run the stack in separate terminals.
+For the existing PAI stack:
 
 ### PostgreSQL
 
@@ -413,24 +589,10 @@ docker compose up -d postgres
 docker compose ps
 ```
 
-### Local Ethereum network
-
-From the repository root:
+### Existing local EVM development
 
 ```powershell
 npx.cmd hardhat node
-```
-
-```text
-RPC: http://localhost:8545
-Chain ID: 31337
-```
-
-### Deploy contracts
-
-```powershell
-npx.cmd hardhat run scripts/deploy.js --network localhost
-npx.cmd hardhat run scripts/deployAgreement.js --network localhost
 ```
 
 ### Backend
@@ -448,40 +610,67 @@ cd frontend
 npm.cmd run dev
 ```
 
----
-
-## Continuity evidence
-
-Pre-ETHOnline repository snapshots are tagged in Git.
-
-Key tags:
-
-```text
-pre-ethonline-2026
-pre-ethonline-ai-spec-2026
-pre-ethonline-2026-final
-```
-
-The final pre-start snapshot explicitly includes the initial Telegram bot skeleton.
-
-Post-start ETHOnline development should remain visible through incremental commits on the dedicated hackathon branch.
+Dedicated Stellar development instructions will be added once the new Stellar components exist and are verified.
 
 ---
 
-## License
+# Limitations
+
+At the start of Stellar Pro:
+
+- the five-component Stellar execution path is not claimed complete
+- no real TRY production rail is claimed
+- no production anchor integration is claimed
+- no Soroban deployment is claimed until deployment and transaction proof are recorded
+- mock/testnet infrastructure will be labeled as mock/testnet
+- pre-existing PAI features are not claimed as hackathon-built work
+
+This separation is deliberate.
+
+---
+
+# What success looks like
+
+A successful Stellar Pro implementation proves:
+
+1. PAI structures and validates the agreement.
+2. Both parties consent to the exact canonical agreement.
+3. PAI reaches `READY_TO_FUND`.
+4. A deterministic Stellar settlement intent is created.
+5. TRY funding is routed through the anchor/provider abstraction.
+6. Stellar funding is independently verified.
+7. Soroban escrow is funded.
+8. Soroban contains the **same canonical agreement hash** accepted in PAI.
+9. Delivery and acceptance satisfy the release condition.
+10. Soroban releases the asset.
+11. PAI reaches `COMPLETED`.
+
+---
+
+# Scale-track positioning
+
+> **PAI already solved agreement understanding, validation and consent. Stellar Pro adds financial execution.**
+
+> **We didn't rebuild PAI on Stellar. We extended an existing agreement system with a Stellar financial execution layer.**
+
+---
+
+# AI usage
+
+PAI uses AI both as a development assistant and as part of the product architecture.
+
+The existing project includes local Qwen / QLoRA work for natural-language agreement interpretation and structured agreement extraction.
+
+PAI does not treat AI output as authoritative.
+
+Deterministic validation, human review, canonical version/hash acceptance, wallet binding and protocol execution remain separate responsibilities.
+
+See [AI_USAGE.md](./AI_USAGE.md) for additional disclosure.
+
+---
+
+# License
 
 MIT License.
 
 Copyright (c) 2026 Behzad Khoshian
-
-## AI Usage
-
-PAI uses AI both as a development assistant and as part of the product architecture.
-
-For ETHOnline 2026, a local Qwen3 4B model was fine-tuned with QLoRA for natural-language agreement interpretation and structured Agreement Object extraction.
-
-Model training and local inference were completed and verified. The submitted Telegram runtime still used the existing backend Intelligence stub and did not yet directly invoke the local model.
-
-PAI does not treat AI output as authoritative. Deterministic validation, human review, exact agreement version/hash acceptance, wallet binding and protocol execution remain separate responsibilities.
-
-Full disclosure: [AI_USAGE.md](./AI_USAGE.md)
