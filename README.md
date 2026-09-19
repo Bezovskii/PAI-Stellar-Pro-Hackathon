@@ -100,7 +100,7 @@ a96d0ad49b635577f43394bf1c764d46544f5d12
 
 ---
 
-# What we are building during Stellar Pro
+# What I am building during Stellar Pro
 
 The Stellar-specific components below are **hackathon targets**.
 
