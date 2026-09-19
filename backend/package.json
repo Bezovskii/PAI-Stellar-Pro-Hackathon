@@ -26,6 +26,7 @@
     "@pai/settlement-contract": "file:../packages/settlement-contract",
     "@prisma/adapter-pg": "^7.9.1",
     "@prisma/client": "^7.9.1",
+    "@stellar/stellar-sdk": "^17.1.0",
     "dotenv": "^17.4.2",
     "ethers": "^6.17.0",
     "fastify": "^5.11.3",
