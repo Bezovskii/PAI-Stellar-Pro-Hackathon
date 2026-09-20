@@ -4,7 +4,7 @@
 
 PAI turns natural-language agreements into structured, reviewable, programmable workflows.
 
-For **Stellar Pro Hackathon — Scale**, we are extending the existing PAI product with a **Stellar settlement execution layer**:
+For **Stellar Pro Hackathon — Scale**, I am extending the existing PAI product with a **Stellar settlement execution layer**:
 
 ```text
 Agreement understanding + consent
@@ -100,7 +100,7 @@ a96d0ad49b635577f43394bf1c764d46544f5d12
 
 ---
 
-# What we are building during Stellar Pro
+# What I am building during Stellar Pro
 
 The Stellar-specific components below are **hackathon targets**.
 
@@ -177,7 +177,7 @@ PAI's intelligence remains chain-independent.
 
 Stellar is the financial execution adapter.
 
-> **We are not moving PAI's intelligence onto Stellar. We are connecting PAI's agreement state to Stellar execution.**
+> **I am not moving PAI's intelligence onto Stellar. I am connecting PAI's agreement state to Stellar execution.**
 
 ---
 
