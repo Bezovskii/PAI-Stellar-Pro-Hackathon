@@ -47,7 +47,7 @@ CREATED → FUNDED → DELIVERED → COMPLETED
 
 - **Public GitHub:** https://github.com/Bezovskii/PAI-Stellar-Pro-Hackathon
 - **Hackathon branch:** `stellar-pro-2026`
-- **Current public demo:** https://portsmouth-stayed-promote-yearly.trycloudflare.com
+- **Current public demo:** https://joel-olympics-julian-circumstances.trycloudflare.com/
 - **Track:** SCALE
 - **Network:** Stellar Testnet
 
