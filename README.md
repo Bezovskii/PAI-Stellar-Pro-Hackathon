@@ -51,7 +51,6 @@ CREATED → FUNDED → DELIVERED → COMPLETED
 - **Track:** SCALE
 - **Network:** Stellar Testnet
 
-> The Cloudflare URL is the current verified public demo path. If a stable Vercel production URL is finalized before submission, replace the demo URL above with that deployment URL.
 
 ---
 
