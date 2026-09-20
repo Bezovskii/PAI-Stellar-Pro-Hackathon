@@ -892,6 +892,29 @@ Judge-facing backend access is reached through the same-origin `/api` proxy.
 The final Stellar lifecycle mutation was executed through the tested live Stellar driver directly, not through the public browser funding button.
 
 ---
+### Wallet / signing boundary
+
+The current judge-facing web application retains PAI's pre-existing
+EVM/SIWE authentication layer. Therefore, the visible `Connect wallet`
+control uses an injected EVM wallet such as MetaMask.
+
+This browser wallet is used for the existing PAI identity/authentication
+flow. It is **not** the signer for the verified Stellar settlement proof.
+
+The Stellar Pro execution path is:
+
+PAI canonical agreement
+→ deterministic execution binding
+→ Stellar execution adapter / live driver
+→ deployed Soroban AgreementEscrow
+→ Stellar Testnet settlement
+
+The verified 1 USDC lifecycle was not initiated or signed through the
+browser's `Connect wallet` button.
+
+Browser-side Stellar wallet signing is post-hackathon product work.
+The intended production boundary is user-controlled Stellar authorization
+while PAI determines when an accepted agreement is eligible for settlement.
 
 # Product distinction
 
