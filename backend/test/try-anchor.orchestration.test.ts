@@ -1,4 +1,4 @@
-﻿import assert
+import assert
   from "node:assert/strict";
 
 import test
@@ -86,7 +86,7 @@ function createSigner(
 }
 
 test(
-  "orchestrates TRY acquisition through independently verified Stellar USDC",
+  "orchestrates exact-target TRY acquisition through independently verified Stellar USDC",
   async () => {
     const server =
       Keypair.random();
@@ -295,7 +295,7 @@ test(
                 string;
               buy_asset:
                 string;
-              sell_amount:
+              buy_amount:
                 string;
               sell_delivery_method:
                 string;
@@ -316,8 +316,8 @@ test(
                   TR_MOCK_ANCHOR_CONFIG,
                 ),
 
-              sell_amount:
-                "50",
+              buy_amount:
+                "3.25",
 
               sell_delivery_method:
                 "bank_account",
@@ -601,7 +601,10 @@ test(
             client,
           ),
 
-        sellAmountTry:
+        targetBuyAmountUsdc:
+          "3.25",
+
+        maxSourceAmountTry:
           "50",
 
         destinationAccount,

@@ -1,4 +1,4 @@
-﻿import {
+import {
   discoverAnchor,
 } from "./discovery.js";
 
@@ -36,15 +36,17 @@ import type {
   VerifiedAssetAcquisitionProof,
 } from "./types.js";
 
-export interface AcquireTryToStellarUsdcInput {
+export type TryAcquisitionProgress =
+  | "QUOTING"
+  | "ANCHOR_PENDING"
+  | "STELLAR_RECEIVED";
+
+interface AcquireTryToStellarUsdcBaseInput {
   readonly config:
     TryAnchorConfig;
 
   readonly signer:
     Sep10Signer;
-
-  readonly sellAmountTry:
-    string;
 
   readonly destinationAccount:
     string;
@@ -58,9 +60,42 @@ export interface AcquireTryToStellarUsdcInput {
   readonly fetchImpl?:
     FetchLike;
 
+  readonly onProgress?:
+    (
+      state:
+        TryAcquisitionProgress,
+    ) =>
+      void |
+      Promise<void>;
+
   readonly now?:
     () => Date;
 }
+
+export type AcquireTryToStellarUsdcInput =
+  AcquireTryToStellarUsdcBaseInput &
+    (
+      | {
+          readonly sellAmountTry:
+            string;
+
+          readonly targetBuyAmountUsdc?:
+            never;
+
+          readonly maxSourceAmountTry?:
+            never;
+        }
+      | {
+          readonly sellAmountTry?:
+            never;
+
+          readonly targetBuyAmountUsdc:
+            string;
+
+          readonly maxSourceAmountTry?:
+            string;
+        }
+    );
 
 const MAX_TRANSACTION_POLLS =
   30;
@@ -114,46 +149,94 @@ export async function acquireTryToStellarUsdc(
       discovery,
       session,
 
-      ...(input.customerType ===
-      undefined
-        ? {}
-        : {
-            customerType:
-              input.customerType,
-          }),
+      ...(
+        input.customerType ===
+        undefined
+          ? {}
+          : {
+              customerType:
+                input.customerType,
+            }
+      ),
 
-      ...(input.kycFields ===
-      undefined
-        ? {}
-        : {
-            fields:
-              input.kycFields,
-          }),
+      ...(
+        input.kycFields ===
+        undefined
+          ? {}
+          : {
+              fields:
+                input.kycFields,
+            }
+      ),
 
       fetchImpl,
     });
+
+  await input.onProgress?.(
+    "QUOTING",
+  );
 
   const quote =
-    await createFirmQuote({
-      config:
-        input.config,
+    input.targetBuyAmountUsdc !==
+    undefined
+      ? await createFirmQuote({
+          config:
+            input.config,
 
-      discovery,
-      session,
+          discovery,
+          session,
 
-      sellAmountTry:
-        input.sellAmountTry,
+          buyAmountUsdc:
+            input.targetBuyAmountUsdc,
 
-      fetchImpl,
+          ...(
+            input.maxSourceAmountTry ===
+            undefined
+              ? {}
+              : {
+                  maxSourceAmountTry:
+                    input.maxSourceAmountTry,
+                }
+          ),
 
-      ...(input.now ===
-      undefined
-        ? {}
-        : {
-            now:
-              input.now,
-          }),
-    });
+          fetchImpl,
+
+          ...(
+            input.now ===
+            undefined
+              ? {}
+              : {
+                  now:
+                    input.now,
+                }
+          ),
+        })
+      : await createFirmQuote({
+          config:
+            input.config,
+
+          discovery,
+          session,
+
+          sellAmountTry:
+            input.sellAmountTry,
+
+          fetchImpl,
+
+          ...(
+            input.now ===
+            undefined
+              ? {}
+              : {
+                  now:
+                    input.now,
+                }
+          ),
+        });
+
+  await input.onProgress?.(
+    "ANCHOR_PENDING",
+  );
 
   const deposit =
     await createDepositExchange({
@@ -215,21 +298,30 @@ export async function acquireTryToStellarUsdc(
       );
   }
 
-  return await verifySpendableAcquisition({
-    config:
-      input.config,
+  const proof =
+    await verifySpendableAcquisition({
+      config:
+        input.config,
 
-    quote,
-    deposit,
-    transaction,
-    fetchImpl,
+      quote,
+      deposit,
+      transaction,
+      fetchImpl,
 
-    ...(input.now ===
-    undefined
-      ? {}
-      : {
-          now:
-            input.now,
-        }),
-  });
+      ...(
+        input.now ===
+        undefined
+          ? {}
+          : {
+              now:
+                input.now,
+            }
+      ),
+    });
+
+  await input.onProgress?.(
+    "STELLAR_RECEIVED",
+  );
+
+  return proof;
 }
