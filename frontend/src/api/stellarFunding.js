@@ -1,4 +1,4 @@
-﻿export const STELLAR_FUNDING_SCHEMA_VERSION =
+export const STELLAR_FUNDING_SCHEMA_VERSION =
     "pai.stellar-funding.v1";
 
 export const STELLAR_FUNDING_STATUSES = Object.freeze([
@@ -296,4 +296,3 @@ export async function retryStellarFunding({
         }
     );
 }
-
