@@ -13,6 +13,16 @@ pub enum EscrowStatus {
     Delivered,
     Completed,
     Refunded,
+    Disputed,
+    Resolved,
+}
+
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum Resolution {
+    Pending,
+    PayPayer,
+    PayPayee,
 }
 
 #[contracttype]
@@ -22,11 +32,15 @@ pub struct EscrowState {
     pub execution_binding_hash: BytesN<32>,
     pub payer: Address,
     pub payee: Address,
+    pub arbiter: Address,
     pub token: Address,
     pub amount: i128,
     pub deadline: u64,
     pub status: EscrowStatus,
     pub evidence_hash: Option<BytesN<32>>,
+    pub dispute_evidence_hash: Option<BytesN<32>>,
+    pub dispute_raised_by: Option<Address>,
+    pub resolution: Resolution,
 }
 
 #[contracterror]
@@ -44,6 +58,11 @@ pub enum EscrowError {
     RefundNotAvailable = 9,
     DeadlineNotReached = 10,
     InsufficientEscrowBalance = 11,
+    InvalidDisputeActor = 12,
+    DisputeNotAvailable = 13,
+    NotArbiter = 14,
+    DisputeNotActive = 15,
+    InvalidResolution = 16,
 }
 
 #[contractevent]
@@ -54,6 +73,7 @@ pub struct EscrowInitialized {
     pub execution_binding_hash: BytesN<32>,
     pub payer: Address,
     pub payee: Address,
+    pub arbiter: Address,
     pub token: Address,
     pub amount: i128,
     pub deadline: u64,
@@ -91,6 +111,26 @@ pub struct EscrowRefunded {
     pub amount: i128,
 }
 
+#[contractevent]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct DisputeRaised {
+    #[topic]
+    pub canonical_agreement_hash: BytesN<32>,
+    pub raised_by: Address,
+    pub dispute_evidence_hash: BytesN<32>,
+    pub prior_status: EscrowStatus,
+}
+
+#[contractevent]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct DisputeResolved {
+    #[topic]
+    pub canonical_agreement_hash: BytesN<32>,
+    pub arbiter: Address,
+    pub resolution: Resolution,
+    pub amount: i128,
+}
+
 #[contracttype]
 enum DataKey {
     Escrow,
@@ -116,6 +156,7 @@ impl AgreementEscrow {
         env: Env,
         payer: Address,
         payee: Address,
+        arbiter: Address,
         token: Address,
         amount: i128,
         deadline: u64,
@@ -143,11 +184,15 @@ impl AgreementEscrow {
             execution_binding_hash: execution_binding_hash.clone(),
             payer: payer.clone(),
             payee: payee.clone(),
+            arbiter: arbiter.clone(),
             token: token.clone(),
             amount,
             deadline,
             status: EscrowStatus::ReadyToFund,
             evidence_hash: None,
+            dispute_evidence_hash: None,
+            dispute_raised_by: None,
+            resolution: Resolution::Pending,
         };
 
         write_state(&env, &state);
@@ -157,6 +202,7 @@ impl AgreementEscrow {
             execution_binding_hash,
             payer,
             payee,
+            arbiter,
             token,
             amount,
             deadline,
@@ -282,6 +328,91 @@ impl AgreementEscrow {
 
         EscrowRefunded {
             canonical_agreement_hash: state.canonical_agreement_hash.clone(),
+            amount: state.amount,
+        }
+        .publish(&env);
+
+        Ok(state)
+    }
+
+    pub fn raise_dispute(
+        env: Env,
+        raised_by: Address,
+        dispute_evidence_hash: BytesN<32>,
+    ) -> Result<EscrowState, EscrowError> {
+        let mut state = read_state(&env)?;
+        let prior_status = state.status.clone();
+
+        if prior_status != EscrowStatus::Funded && prior_status != EscrowStatus::Delivered {
+            return Err(EscrowError::DisputeNotAvailable);
+        }
+
+        if prior_status == EscrowStatus::Funded && env.ledger().timestamp() >= state.deadline {
+            return Err(EscrowError::DeadlinePassed);
+        }
+
+        if raised_by != state.payer && raised_by != state.payee {
+            return Err(EscrowError::InvalidDisputeActor);
+        }
+
+        raised_by.require_auth();
+
+        state.dispute_evidence_hash = Some(dispute_evidence_hash.clone());
+        state.dispute_raised_by = Some(raised_by.clone());
+        state.status = EscrowStatus::Disputed;
+        write_state(&env, &state);
+
+        DisputeRaised {
+            canonical_agreement_hash: state.canonical_agreement_hash.clone(),
+            raised_by,
+            dispute_evidence_hash,
+            prior_status,
+        }
+        .publish(&env);
+
+        Ok(state)
+    }
+
+    pub fn resolve_dispute(
+        env: Env,
+        resolver: Address,
+        resolution: Resolution,
+    ) -> Result<EscrowState, EscrowError> {
+        let mut state = read_state(&env)?;
+
+        if state.status != EscrowStatus::Disputed {
+            return Err(EscrowError::DisputeNotActive);
+        }
+
+        if resolver != state.arbiter {
+            return Err(EscrowError::NotArbiter);
+        }
+
+        resolver.require_auth();
+
+        let escrow_address = env.current_contract_address();
+        let token_client = token::Client::new(&env, &state.token);
+
+        if token_client.balance(&escrow_address) < state.amount {
+            return Err(EscrowError::InsufficientEscrowBalance);
+        }
+
+        let recipient = match resolution {
+            Resolution::Pending => return Err(EscrowError::InvalidResolution),
+            Resolution::PayPayer => state.payer.clone(),
+            Resolution::PayPayee => state.payee.clone(),
+        };
+
+        token_client.transfer(&escrow_address, &recipient, &state.amount);
+
+        state.status = EscrowStatus::Resolved;
+        state.resolution = resolution.clone();
+        write_state(&env, &state);
+
+        DisputeResolved {
+            canonical_agreement_hash: state.canonical_agreement_hash.clone(),
+            arbiter: state.arbiter.clone(),
+            resolution,
             amount: state.amount,
         }
         .publish(&env);

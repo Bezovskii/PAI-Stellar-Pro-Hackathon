@@ -12,19 +12,58 @@ This workspace contains PAI's Stellar/Soroban agreement-bound settlement contrac
 - Deployment TX: `a60541245e3d3ec62d918adf01207996781069fa6ba1d789da5b725900f40029`
 - Deployment ledger: `4758368`
 
-These deployment identifiers refer to the original hackathon contract. Gate 2A hardening is implemented and tested on the `instawards-hardening` branch and has not been redeployed yet.
+These deployment identifiers refer to the original hackathon contract. Gate 2A and Gate 2B hardening are implemented and tested on the `instawards-hardening` branch and have not been redeployed yet.
 
-## Gate 2A lifecycle
+## Hardened lifecycle
 
 ```text
 ReadyToFund
--> Funded
-   -> Delivered
-      -> Completed
-   -> Refunded (payer, at/after deadline while still Funded)
+   -> Funded
+      -> Delivered
+         -> Completed
+         -> Disputed
+      -> Disputed
+      -> Refunded (payer, at/after deadline while still Funded)
+
+Disputed
+   -> Resolved -> PayPayer
+   -> Resolved -> PayPayee
 ```
 
-Funding and delivery are rejected at or after the configured deadline.
+## Gate 2A
+
+IMPLEMENTED + TESTED:
+
+- typed contract errors for lifecycle failures
+- lifecycle events
+- deadline / expiry enforcement
+- payer refund after deadline while still Funded
+- negative-path lifecycle tests
+
+## Gate 2B
+
+IMPLEMENTED + TESTED:
+
+- arbiter address bound at contract construction
+- dispute initiation by payer or payee
+- dispute evidence hash stored on-chain
+- dispute raiser stored on-chain
+- dispute from Funded or Delivered
+- deadline guard for Funded disputes
+- explicit arbiter authorization for resolution
+- `Resolution::PayPayer`
+- `Resolution::PayPayee`
+- dispute and resolution events
+- release/refund blocked while Disputed
+- resolution is terminal
+- third-party dispute rejection
+- non-arbiter resolution rejection
+
+Not yet claimed:
+
+- deployment of the hardened contract
+- live testnet verification of the hardened dispute lifecycle
+- browser Stellar wallet signing
 
 ## Soroban test coverage
 
@@ -34,45 +73,34 @@ Run:
 cargo test --manifest-path soroban/Cargo.toml
 ```
 
-Current Gate 2A result:
+Current hardened contract suite:
 
 ```text
-9 tests
-9 passed
+21 tests
+21 passed
 0 failed
 ```
 
-The suite covers:
+The suite includes:
 
 - full agreement escrow lifecycle
+- refund after deadline
 - funding rejected at/after deadline
 - delivery rejected at/after deadline
-- refund rejected before deadline
-- refund after deadline returns funds to payer
-- double funding rejected
-- release before delivery rejected
-- refund after delivery rejected
-- delivery before funding rejected
+- invalid lifecycle transitions
+- payer dispute from Funded
+- payee dispute from Funded
+- payer dispute after Delivered
+- third-party dispute rejection
+- dispute deadline enforcement
+- resolution without dispute rejection
+- non-arbiter resolution rejection
+- arbiter resolution to payer
+- arbiter resolution to payee
+- release/refund blocked while disputed
+- resolved dispute terminality
 
-Soroban test snapshots are committed with the tests so contract behavior can be reviewed across changes.
-
-## Gate 2A hardening
-
-IMPLEMENTED + TESTED:
-
-- typed contract errors for lifecycle failures
-- contract lifecycle events
-- deadline / expiry enforcement
-- payer refund after deadline while still funded
-- negative-path lifecycle tests
-
-Not yet claimed:
-
-- dispute state
-- arbiter binding
-- dispute resolution
-- authorization-specific negative-path tests
-- redeployment of the hardened contract
+Soroban test snapshots are committed with the tests so observable contract behavior can be reviewed across changes.
 
 ## Backend Stellar verification
 
