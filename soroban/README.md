@@ -12,7 +12,7 @@ This workspace contains PAI's Stellar/Soroban agreement-bound settlement contrac
 - Deployment TX: `a60541245e3d3ec62d918adf01207996781069fa6ba1d789da5b725900f40029`
 - Deployment ledger: `4758368`
 
-These deployment identifiers refer to the original hackathon contract. Gate 2A and Gate 2B hardening are implemented and tested on the `instawards-hardening` branch and have not been redeployed yet.
+These deployment identifiers refer to the original hackathon contract. The hardened Testnet deployment and live verification evidence are documented below.
 
 ## Hardened lifecycle
 
@@ -59,11 +59,9 @@ IMPLEMENTED + TESTED:
 - third-party dispute rejection
 - non-arbiter resolution rejection
 
-Not yet claimed:
+Remaining reviewer-critical gap:
 
-- deployment of the hardened contract
-- live testnet verification of the hardened dispute lifecycle
-- browser Stellar wallet signing
+- browser Stellar wallet signing with user-controlled authorization
 
 ## Soroban test coverage
 
