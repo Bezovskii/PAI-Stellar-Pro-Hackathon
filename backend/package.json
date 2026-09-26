@@ -16,7 +16,8 @@
     "prisma:validate": "prisma validate",
     "pretypecheck": "prisma generate",
     "pretest": "prisma generate",
-    "prebuild": "prisma generate"
+    "prebuild": "prisma generate",
+    "test:stellar": "node --import tsx --test test/stellar-funding.service.test.ts test/stellar-settlement.acquisition.test.ts test/stellar-settlement.canonical-intent.test.ts test/stellar-settlement.executor.test.ts test/stellar-settlement.intent.test.ts test/try-anchor.target-quote.test.ts"
   },
   "dependencies": {
     "@fastify/cookie": "^11.1.2",
