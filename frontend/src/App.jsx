@@ -1,4 +1,4 @@
-﻿import {
+import {
   useEffect,
   useState,
 } from "react";
@@ -22,6 +22,7 @@ import BuyerOrderPanel from "./components/orders/BuyerOrderPanel.jsx";
 import SellerOrderPanel from "./components/orders/SellerOrderPanel.jsx";
 import BuyerPaymentPanel from "./components/payments/BuyerPaymentPanel.jsx";
 import WalletControl from "./components/wallet/WalletControl.jsx";
+import StellarWalletControl from "./components/wallet/StellarWalletControl.jsx";
 import WalletBindingHandoffPage from "./components/wallet/WalletBindingHandoffPage.jsx";
 import StellarFundingPanel from "./components/settlement/StellarFundingPanel.jsx";
 
@@ -1236,6 +1237,8 @@ function App() {
             </NavLink>
           )}
         </nav>
+
+        <StellarWalletControl />
 
         <WalletControl />
       </header>
