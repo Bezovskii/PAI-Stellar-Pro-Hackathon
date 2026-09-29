@@ -5,7 +5,14 @@ import {
     useState,
 } from "react";
 
-import { Networks } from "@stellar/stellar-sdk";
+import {
+    Asset,
+    BASE_FEE,
+    Horizon,
+    Networks,
+    Operation,
+    TransactionBuilder,
+} from "@stellar/stellar-sdk";
 
 import {
     StellarWalletsKit,
@@ -18,6 +25,9 @@ import {
 // eslint-disable-next-line react-refresh/only-export-components
 export const StellarWalletContext =
     createContext(null);
+
+const HORIZON_TESTNET_URL =
+    "https://horizon-testnet.stellar.org";
 
 let kitInitialized = false;
 
@@ -41,6 +51,8 @@ function ensureKitInitialized() {
 
 function getErrorMessage(error) {
     return (
+        error?.response?.data?.detail ||
+        error?.response?.data?.title ||
         error?.message ||
         "Unexpected Stellar wallet error."
     );
@@ -62,6 +74,14 @@ async function requireTestnet() {
     return network;
 }
 
+function emptySigningProof() {
+    return {
+        status: "idle",
+        transactionHash: "",
+        error: "",
+    };
+}
+
 export function StellarWalletProvider({
     children,
 }) {
@@ -75,6 +95,13 @@ export function StellarWalletProvider({
 
     const [walletError, setWalletError] =
         useState("");
+
+    const [
+        signingProof,
+        setSigningProof,
+    ] = useState(
+        emptySigningProof
+    );
 
     const connectStellarWallet =
         useCallback(async () => {
@@ -102,6 +129,9 @@ export function StellarWalletProvider({
                 }
 
                 setAddress(nextAddress);
+                setSigningProof(
+                    emptySigningProof()
+                );
 
                 return nextAddress;
             } catch (error) {
@@ -126,6 +156,9 @@ export function StellarWalletProvider({
             } finally {
                 setAddress("");
                 setWalletError("");
+                setSigningProof(
+                    emptySigningProof()
+                );
             }
         }, []);
 
@@ -221,6 +254,177 @@ export function StellarWalletProvider({
             [address]
         );
 
+    const submitStellarSigningProof =
+        useCallback(async () => {
+            ensureKitInitialized();
+
+            if (!address) {
+                throw new Error(
+                    "Connect Freighter before creating a signing proof."
+                );
+            }
+
+            setSigningProof({
+                status:
+                    "preparing",
+
+                transactionHash:
+                    "",
+
+                error:
+                    "",
+            });
+
+            try {
+                await requireTestnet();
+
+                const server =
+                    new Horizon.Server(
+                        HORIZON_TESTNET_URL
+                    );
+
+                let sourceAccount;
+
+                try {
+                    sourceAccount =
+                        await server.loadAccount(
+                            address
+                        );
+                } catch (error) {
+                    if (
+                        error?.response?.status ===
+                        404
+                    ) {
+                        throw new Error(
+                            "The connected Stellar Testnet account is not funded yet.",
+                            { cause: error }
+                        );
+                    }
+
+                    throw error;
+                }
+
+                const transaction =
+                    new TransactionBuilder(
+                        sourceAccount,
+                        {
+                            fee:
+                                BASE_FEE,
+
+                            networkPassphrase:
+                                Networks.TESTNET,
+                        }
+                    )
+                        .addOperation(
+                            Operation.payment({
+                                destination:
+                                    address,
+
+                                asset:
+                                    Asset.native(),
+
+                                amount:
+                                    "0.0000001",
+                            })
+                        )
+                        .setTimeout(
+                            60
+                        )
+                        .build();
+
+                setSigningProof({
+                    status:
+                        "awaiting-signature",
+
+                    transactionHash:
+                        "",
+
+                    error:
+                        "",
+                });
+
+                const signedTxXdr =
+                    await signStellarTransactionXdr(
+                        transaction.toXdr(
+                            "base64"
+                        )
+                    );
+
+                const signedTransaction =
+                    TransactionBuilder.fromXdr(
+                        signedTxXdr,
+                        Networks.TESTNET
+                    );
+
+                setSigningProof({
+                    status:
+                        "submitting",
+
+                    transactionHash:
+                        "",
+
+                    error:
+                        "",
+                });
+
+                const submitted =
+                    await server.submitTransaction(
+                        signedTransaction
+                    );
+
+                const transactionHash =
+                    submitted?.hash?.trim();
+
+                if (!transactionHash) {
+                    throw new Error(
+                        "Stellar accepted the transaction but did not return a transaction hash."
+                    );
+                }
+
+                setSigningProof({
+                    status:
+                        "success",
+
+                    transactionHash,
+
+                    error:
+                        "",
+                });
+
+                return {
+                    transactionHash,
+                };
+            } catch (error) {
+                const message =
+                    getErrorMessage(
+                        error
+                    );
+
+                setSigningProof({
+                    status:
+                        "error",
+
+                    transactionHash:
+                        "",
+
+                    error:
+                        message,
+                });
+
+                throw error;
+            }
+        }, [
+            address,
+            signStellarTransactionXdr,
+        ]);
+
+    const clearStellarSigningProof =
+        useCallback(() => {
+            setSigningProof(
+                emptySigningProof()
+            );
+        }, []);
+
     const value =
         useMemo(
             () => ({
@@ -236,6 +440,8 @@ export function StellarWalletProvider({
                 networkPassphrase:
                     Networks.TESTNET,
 
+                signingProof,
+
                 connectStellarWallet,
 
                 disconnectStellarWallet,
@@ -243,15 +449,22 @@ export function StellarWalletProvider({
                 refreshStellarWallet,
 
                 signStellarTransactionXdr,
+
+                submitStellarSigningProof,
+
+                clearStellarSigningProof,
             }),
             [
                 address,
                 isConnecting,
                 walletError,
+                signingProof,
                 connectStellarWallet,
                 disconnectStellarWallet,
                 refreshStellarWallet,
                 signStellarTransactionXdr,
+                submitStellarSigningProof,
+                clearStellarSigningProof,
             ]
         );
 

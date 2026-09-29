@@ -12,6 +12,22 @@ function shortAddress(address) {
     return `${address.slice(0, 6)}...${address.slice(-4)}`;
 }
 
+function signingButtonText(status) {
+    if (status === "preparing") {
+        return "Preparing proof...";
+    }
+
+    if (status === "awaiting-signature") {
+        return "Approve in Freighter...";
+    }
+
+    if (status === "submitting") {
+        return "Submitting proof...";
+    }
+
+    return "Verify Stellar signing";
+}
+
 export default function StellarWalletControl() {
     const {
         address,
@@ -20,8 +36,12 @@ export default function StellarWalletControl() {
         isConnecting,
         walletError,
 
+        signingProof,
+
         connectStellarWallet,
         disconnectStellarWallet,
+        submitStellarSigningProof,
+        clearStellarSigningProof,
     } = useStellarWallet();
 
     const handleConnect =
@@ -41,6 +61,22 @@ export default function StellarWalletControl() {
                 // Disconnect still clears local wallet state.
             }
         };
+
+    const handleSigningProof =
+        async () => {
+            clearStellarSigningProof();
+
+            try {
+                await submitStellarSigningProof();
+            } catch {
+                // StellarWalletContext owns the visible error.
+            }
+        };
+
+    const proofPending =
+        signingProof.status === "preparing" ||
+        signingProof.status === "awaiting-signature" ||
+        signingProof.status === "submitting";
 
     if (!isConnected) {
         return (
@@ -99,8 +135,50 @@ export default function StellarWalletControl() {
 
             <button
                 type="button"
+                className="walletAuthButton"
+                onClick={handleSigningProof}
+                disabled={proofPending}
+                title="Sign and submit a 1-stroop XLM payment back to this same Testnet account"
+            >
+                {signingButtonText(
+                    signingProof.status
+                )}
+            </button>
+
+            {signingProof.status ===
+                "success" && (
+                <span
+                    className="walletInlineStatus"
+                    title={
+                        signingProof.transactionHash
+                    }
+                >
+                    Signing verified{" "}
+                    {shortAddress(
+                        signingProof.transactionHash
+                    )}
+                </span>
+            )}
+
+            {signingProof.status ===
+                "error" &&
+                signingProof.error && (
+                <span
+                    className="walletInlineStatus error"
+                    role="alert"
+                    title={
+                        signingProof.error
+                    }
+                >
+                    {signingProof.error}
+                </span>
+            )}
+
+            <button
+                type="button"
                 className="walletLogoutButton"
                 onClick={handleDisconnect}
+                disabled={proofPending}
             >
                 Disconnect Stellar
             </button>
